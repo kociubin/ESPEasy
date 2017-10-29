@@ -57,7 +57,9 @@ bool SparkFun_APDS9960::init()
     uint8_t id;
 
     /* Initialize I2C */
-    Wire.begin();
+    //Wire.begin();
+    //Wire.begin(D3,D1);
+
 
     /* Read ID register and check against known values for APDS-9960 */
     if( !wireReadDataByte(APDS9960_ID, id) ) {
@@ -379,7 +381,8 @@ bool SparkFun_APDS9960::enableGestureSensor(bool interrupts)
     if( !wireWriteDataByte(APDS9960_PPULSE, DEFAULT_GESTURE_PPULSE) ) {
         return false;
     }
-    if( !setLEDBoost(LED_BOOST_300) ) {
+    //Jon if( !setLEDBoost(LED_BOOST_300) ) {
+    if( !setLEDBoost(LED_BOOST_100) ) {
         return false;
     }
     if( interrupts ) {
@@ -397,7 +400,7 @@ bool SparkFun_APDS9960::enableGestureSensor(bool interrupts)
     if( !enablePower() ){
         return false;
     }
-    if( !setMode(WAIT, 1) ) {
+    if( !setMode(WAITING_TIME, 1) ) {
         return false;
     }
     if( !setMode(PROXIMITY, 1) ) {
@@ -461,18 +464,21 @@ bool SparkFun_APDS9960::isGestureAvailable()
  *
  * @return Number corresponding to gesture. -1 on error.
  */
-int SparkFun_APDS9960::readGesture()
+//Jon int SparkFun_APDS9960::readGesture()
+ int16_t SparkFun_APDS9960::readGesture()
 {
     uint8_t fifo_level = 0;
     uint8_t bytes_read = 0;
     uint8_t fifo_data[128];
     uint8_t gstatus;
-    int motion;
-    int i;
+    //Jon int motion;
+    //Jon int i;
+    uint16_t motion;
+    uint16_t i;
 
     /* Make sure that power and gesture is on and data is valid */
     if( !isGestureAvailable() || !(getMode() & 0b01000001) ) {
-        return -2;
+        return DIR_NONE;
     }
 
     /* Keep looping as long as gesture data is valid */
@@ -570,125 +576,6 @@ int SparkFun_APDS9960::readGesture()
         }
     }
 }
-
-/**
- * @brief Processes a gesture event WITHOUT WAITING and returns best guessed gesture
- *
- * @return Number corresponding to gesture. -1 on error. -2 on incomplete
- */
-int SparkFun_APDS9960::readGestureNonBlocking()
-{
-    uint8_t fifo_level = 0;
-    uint8_t bytes_read = 0;
-    uint8_t fifo_data[128];
-    uint8_t gstatus;
-    int motion;
-    int i;
-    static boolean gbGestureAvailable = false;
-
-    if( isGestureAvailable())
-      gbGestureAvailable = true;
-
-    /* Make sure that power and gesture is on and data is valid */
-    if( !gbGestureAvailable || !(getMode() & 0b01000001) ) {
-//      if( !isGestureAvailable() || !(getMode() & 0b01000001) ) {
-        return -3;
-    }
-
-        /* Get the contents of the STATUS register. Is data still valid? */
-        if( !wireReadDataByte(APDS9960_GSTATUS, gstatus) ) {
-            return ERROR;
-        }
-
-        /* If we have valid data, read in FIFO */
-        if( (gstatus & APDS9960_GVALID) == APDS9960_GVALID ) {
-
-            /* Read the current FIFO level */
-            if( !wireReadDataByte(APDS9960_GFLVL, fifo_level) ) {
-                return ERROR;
-            }
-
-#if DEBUG
-            Serial.print("FIFO Level: ");
-            Serial.println(fifo_level);
-#endif
-
-            /* If there's stuff in the FIFO, read it into our data block */
-            if( fifo_level > 0) {
-                bytes_read = wireReadDataBlock(  APDS9960_GFIFO_U,
-                                                (uint8_t*)fifo_data,
-                                                (fifo_level * 4) );
-                if( bytes_read == -1 ) {
-                    return ERROR;
-                }
-#if DEBUG
-                Serial.print("FIFO Dump: ");
-                for ( i = 0; i < bytes_read; i++ ) {
-                    Serial.print(fifo_data[i]);
-                    Serial.print(" ");
-                }
-                Serial.println();
-#endif
-
-                /* If at least 1 set of data, sort the data into U/D/L/R */
-                if( bytes_read >= 4 ) {
-                    for( i = 0; i < bytes_read; i += 4 ) {
-                        gesture_data_.u_data[gesture_data_.index] = \
-                                                            fifo_data[i + 0];
-                        gesture_data_.d_data[gesture_data_.index] = \
-                                                            fifo_data[i + 1];
-                        gesture_data_.l_data[gesture_data_.index] = \
-                                                            fifo_data[i + 2];
-                        gesture_data_.r_data[gesture_data_.index] = \
-                                                            fifo_data[i + 3];
-                        gesture_data_.index++;
-                        gesture_data_.total_gestures++;
-                    }
-
-#if DEBUG
-                Serial.print("Up Data: ");
-                for ( i = 0; i < gesture_data_.total_gestures; i++ ) {
-                    Serial.print(gesture_data_.u_data[i]);
-                    Serial.print(" ");
-                }
-                Serial.println();
-#endif
-
-                    /* Filter and process gesture data. Decode near/far state */
-                    if( processGestureData() ) {
-                        if( decodeGesture() ) {
-                            //***TODO: U-Turn Gestures
-#if DEBUG
-                            //Serial.println(gesture_motion_);
-#endif
-                        }
-                    }
-
-                    /* Reset data */
-                    gesture_data_.index = 0;
-                    gesture_data_.total_gestures = 0;
-                }
-            }
-        } else {
-
-            /* Determine best guessed gesture and clean up */
-            delay(FIFO_PAUSE_TIME);
-            decodeGesture();
-            motion = gesture_motion_;
-#if DEBUG
-            Serial.print("END: ");
-            Serial.println(gesture_motion_);
-#endif
-            gbGestureAvailable = false;
-
-            resetGestureParameters();
-            return motion;
-        }
-
-  return -2;
-}
-
-
 
 /**
  * Turn the APDS-9960 on
@@ -888,6 +775,7 @@ bool SparkFun_APDS9960::processGestureData()
     uint8_t d_last = 0;
     uint8_t l_last = 0;
     uint8_t r_last = 0;
+    /* Jon
     int ud_ratio_first;
     int lr_ratio_first;
     int ud_ratio_last;
@@ -895,6 +783,15 @@ bool SparkFun_APDS9960::processGestureData()
     int ud_delta;
     int lr_delta;
     int i;
+    */
+
+    int16_t ud_ratio_first;
+    int16_t lr_ratio_first;
+    int16_t ud_ratio_last;
+    int16_t lr_ratio_last;
+    int16_t ud_delta;
+    int16_t lr_delta;
+    int16_t i;
 
     /* If we have less than 4 total gestures, that's not enough */
     if( gesture_data_.total_gestures <= 4 ) {
@@ -951,6 +848,14 @@ bool SparkFun_APDS9960::processGestureData()
                 break;
             }
         }
+    }
+    /* Catch to make sure we don't divide by 0 */
+    if( ((u_first + d_first) == 0) ||
+    ((l_first + r_first) == 0) ||
+    ((u_last + d_last) == 0) ||
+    ((l_last + r_last) == 0) ) {
+
+        return false;
     }
 
     /* Calculate the first vs. last ratio of up/down and left/right */
@@ -2260,9 +2165,11 @@ bool SparkFun_APDS9960::wireWriteDataByte(uint8_t reg, uint8_t val)
  */
 bool SparkFun_APDS9960::wireWriteDataBlock(  uint8_t reg,
                                         uint8_t *val,
-                                        unsigned int len)
+//Jon                                        unsigned int len)
+                                        uint16_t len)
 {
-    unsigned int i;
+    //Jon unsigned int i;
+    uint16_t i;
 
     Wire.beginTransmission(APDS9960_I2C_ADDR);
     Wire.write(reg);
@@ -2291,6 +2198,10 @@ bool SparkFun_APDS9960::wireReadDataByte(uint8_t reg, uint8_t &val)
         return false;
     }
 
+    // Jon SH: Short delay to improve stability of read from the APDS9960
+    // without this Wire.requestFrom appears to not return.
+    delayMicroseconds(100);
+
     /* Read from register */
     Wire.requestFrom(APDS9960_I2C_ADDR, 1);
     while (Wire.available()) {
@@ -2308,9 +2219,11 @@ bool SparkFun_APDS9960::wireReadDataByte(uint8_t reg, uint8_t &val)
  * @param[in] len number of bytes to read
  * @return Number of bytes read. -1 on read error.
  */
-int SparkFun_APDS9960::wireReadDataBlock(   uint8_t reg,
+ //Jon int SparkFun_APDS9960::wireReadDataBlock(   uint8_t reg,
+int16_t SparkFun_APDS9960::wireReadDataBlock(   uint8_t reg,
                                         uint8_t *val,
-                                        unsigned int len)
+//Jon                                        unsigned int len)
+                                        uint16_t len)
 {
     unsigned char i = 0;
 

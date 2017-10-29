@@ -106,7 +106,7 @@
 #define POWER                   0
 #define AMBIENT_LIGHT           1
 #define PROXIMITY               2
-#define WAIT                    3
+#define WAITING_TIME            3
 #define AMBIENT_LIGHT_INT       4
 #define PROXIMITY_INT           5
 #define GESTURE                 6
@@ -174,7 +174,9 @@
 #define DEFAULT_GEXTH           30      // Threshold for exiting gesture mode
 #define DEFAULT_GCONF1          0x40    // 4 gesture events for int., 1 for exit
 #define DEFAULT_GGAIN           GGAIN_4X
-#define DEFAULT_GLDRIVE         LED_DRIVE_100MA
+//#define DEFAULT_GGAIN           GGAIN_2X
+//#define DEFAULT_GLDRIVE         LED_DRIVE_100MA
+#define DEFAULT_GLDRIVE         LED_DRIVE_25MA
 #define DEFAULT_GWTIME          GWTIME_2_8MS
 #define DEFAULT_GOFFSET         0       // No offset scaling for gesture mode
 #define DEFAULT_GPULSE          0xC9    // 32us, 10 pulses
@@ -194,14 +196,12 @@ enum {
 };
 
 /* State definitions */
-
 enum {
-  N_A_STATE,   // NA_STATE - collision with ESP8266WiFi.h
+  APDS_NA_STATE,
   NEAR_STATE,
   FAR_STATE,
   ALL_STATE
 };
-
 
 /* Container for gesture data */
 typedef struct gesture_data_type {
@@ -287,8 +287,8 @@ public:
 
     /* Gesture methods */
     bool isGestureAvailable();
-    int readGesture();
-    int readGestureNonBlocking();
+    //Jon int readGesture();
+    int16_t readGesture();
 
 private:
 
@@ -330,12 +330,15 @@ private:
     /* Raw I2C Commands */
     bool wireWriteByte(uint8_t val);
     bool wireWriteDataByte(uint8_t reg, uint8_t val);
-    bool wireWriteDataBlock(uint8_t reg, uint8_t *val, unsigned int len);
+    // Jon bool wireWriteDataBlock(uint8_t reg, uint8_t *val, unsigned int len);
+    bool wireWriteDataBlock(uint8_t reg, uint8_t *val, uint16_t len);
     bool wireReadDataByte(uint8_t reg, uint8_t &val);
-    int wireReadDataBlock(uint8_t reg, uint8_t *val, unsigned int len);
+    // Jon int wireReadDataBlock(uint8_t reg, uint8_t *val, unsigned int len);
+    int16_t wireReadDataBlock(uint8_t reg, uint8_t *val, uint16_t len);
 
     /* Members */
     gesture_data_type gesture_data_;
+    /* Jon
     int gesture_ud_delta_;
     int gesture_lr_delta_;
     int gesture_ud_count_;
@@ -344,6 +347,15 @@ private:
     int gesture_far_count_;
     int gesture_state_;
     int gesture_motion_;
+    */
+    int16_t gesture_ud_delta_;
+    int16_t gesture_lr_delta_;
+    int16_t gesture_ud_count_;
+    int16_t gesture_lr_count_;
+    int16_t gesture_near_count_;
+    int16_t gesture_far_count_;
+    int16_t gesture_state_;
+    int16_t gesture_motion_;
 };
 
 #endif
