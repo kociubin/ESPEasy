@@ -14,19 +14,17 @@
 // Note: The chip has a wide view-of-angle. If housing is in this angle the chip blocks!
 
 
+//TODO
+//  add configurations for INTERRUPTS and i2C GPIOs
+
+
+
 #ifdef PLUGIN_BUILD_DEV
 
 #define PLUGIN_064
 #define PLUGIN_ID_064         64
 #define PLUGIN_NAME_064       "Gesture - APDS9960 [DEV]"
-#define PLUGIN_VALUENAME1_064 "Gesture"
-#define PLUGIN_VALUENAME2_064 "Proximity"
-#define PLUGIN_VALUENAME3_064 "Light"
-/*
-#define PLUGIN_VALUENAME4_064 "R"
-#define PLUGIN_VALUENAME5_064 "G"
-#define PLUGIN_VALUENAME6_064 "B"
-*/
+#define PLUGIN_VALUENAME1_064 "Proximity"
 
 #include <SparkFun_APDS9960.h>   //Lib is modified to work with ESP
 
@@ -52,7 +50,7 @@ boolean Plugin_064(byte function, struct EventStruct *event, String& string)
         Device[deviceCount].PullUpOption = false;
         Device[deviceCount].InverseLogicOption = false;
         Device[deviceCount].FormulaOption = false;
-        Device[deviceCount].ValueCount = 3;
+        Device[deviceCount].ValueCount = 1;
         Device[deviceCount].SendDataOption = true;
         Device[deviceCount].TimerOption = true;
         Device[deviceCount].TimerOptional = true;
@@ -69,13 +67,6 @@ boolean Plugin_064(byte function, struct EventStruct *event, String& string)
     case PLUGIN_GET_DEVICEVALUENAMES:
       {
         strcpy_P(ExtraTaskSettings.TaskDeviceValueNames[0], PSTR(PLUGIN_VALUENAME1_064));
-        strcpy_P(ExtraTaskSettings.TaskDeviceValueNames[1], PSTR(PLUGIN_VALUENAME2_064));
-        strcpy_P(ExtraTaskSettings.TaskDeviceValueNames[2], PSTR(PLUGIN_VALUENAME3_064));
-        /*
-        strcpy_P(ExtraTaskSettings.TaskDeviceValueNames[3], PSTR(PLUGIN_VALUENAME4_064));
-        strcpy_P(ExtraTaskSettings.TaskDeviceValueNames[4], PSTR(PLUGIN_VALUENAME5_064));
-        strcpy_P(ExtraTaskSettings.TaskDeviceValueNames[5], PSTR(PLUGIN_VALUENAME6_064));
-        */
         break;
       }
 
@@ -111,13 +102,15 @@ boolean Plugin_064(byte function, struct EventStruct *event, String& string)
 
           PLUGIN_064_pds->enablePower();
 
-          if (! PLUGIN_064_pds->enableLightSensor(false))
-            log += F(" - Error during light sensor init!");
           if (! PLUGIN_064_pds->enableProximitySensor(false))
-            log += F(" - Error during proximity sensor init!");
+             log += F(" - Error during proximity sensor init!");
 
-          if (! PLUGIN_064_pds->enableGestureSensor(false))
-            log += F(" - Error during gesture sensor init!");
+          // Adjust the Proximity sensor gain
+          if ( !PLUGIN_064_pds->setProximityGain(PGAIN_4X) ) {
+             log += F(" - Something went wrong trying to set PGAIN");
+
+           }
+
         }
         else
         {
@@ -134,43 +127,26 @@ boolean Plugin_064(byte function, struct EventStruct *event, String& string)
         if (!PLUGIN_064_pds)
           break;
 
-        if ( !PLUGIN_064_pds->isGestureAvailable() )
+        uint8_t proximity_data = 0;
+        PLUGIN_064_pds->readProximity(proximity_data);
+
+        //Filter out unnecessary values
+        if (proximity_data >= 254.0 || proximity_data < 120)
           break;
 
-        int gesture = PLUGIN_064_pds->readGesture();
+        UserVar[event->BaseVarIndex + 1] = (float)proximity_data;
+        addLog(LOG_LEVEL_INFO, "Read some proximity data");
+        //log += F(" (");
+        //log += (float)proximity_data;
+        //log += F(")");
 
-        //int gesture = PLUGIN_064_pds->readGestureNonBlocking();
+        UserVar[event->BaseVarIndex] = (float)proximity_data;
+        event->sensorType = SENSOR_TYPE_SWITCH;
 
-        //if (gesture == -1) Serial.print(".");
-        //if (gesture == -2) Serial.print(":");
-        //if (gesture == -3) Serial.print("|");
+        sendData(event);
 
-        //if ( 0 && PLUGIN_064_pds->isGestureAvailable() )
-        if (gesture >= 0)
-        {
-          String log = F("APDS : Gesture=");
+        //addLog(LOG_LEVEL_INFO, log);
 
-          switch ( gesture )
-          {
-            case DIR_UP:      log += F("UP");      break;
-            case DIR_DOWN:    log += F("DOWN");    break;
-            case DIR_LEFT:    log += F("LEFT");    break;
-            case DIR_RIGHT:   log += F("RIGHT");   break;
-            case DIR_NEAR:    log += F("NEAR");    break;
-            case DIR_FAR:     log += F("FAR");     break;
-            default:          log += F("NONE");    break;
-          }
-          log += F(" (");
-          log += gesture;
-          log += F(")");
-
-          UserVar[event->BaseVarIndex] = (float)gesture;
-          event->sensorType = SENSOR_TYPE_SWITCH;
-
-          sendData(event);
-
-          addLog(LOG_LEVEL_INFO, log);
-        }
 
         success = true;
         break;
@@ -180,31 +156,6 @@ boolean Plugin_064(byte function, struct EventStruct *event, String& string)
       {
         if (!PLUGIN_064_pds)
           break;
-
-        // Gesture - work is done in PLUGIN_FIFTY_PER_SECOND
-
-        if (1)
-        {
-          uint8_t proximity_data = 0;
-          PLUGIN_064_pds->readProximity(proximity_data);
-          UserVar[event->BaseVarIndex + 1] = (float)proximity_data;
-
-          uint16_t ambient_light = 0;
-          PLUGIN_064_pds->readAmbientLight(ambient_light);
-          UserVar[event->BaseVarIndex + 2] = (float)ambient_light;
-
-          /*
-          uint16_t red_light = 0;
-          uint16_t green_light = 0;
-          uint16_t blue_light = 0;
-          PLUGIN_064_pds->readRedLight(red_light);
-          PLUGIN_064_pds->readGreenLight(green_light);
-          PLUGIN_064_pds->readBlueLight(blue_light);
-          UserVar[event->BaseVarIndex + 3] = (float)red_light;
-          UserVar[event->BaseVarIndex + 4] = (float)green_light;
-          UserVar[event->BaseVarIndex + 5] = (float)blue_light;
-          */
-        }
 
         success = true;
         break;
