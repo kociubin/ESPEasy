@@ -133,8 +133,8 @@ boolean Plugin_064(byte function, struct EventStruct *event, String& string)
         if (proximity_data >= 254.0 || proximity_data < 120)
           break;
 
-        UserVar[event->BaseVarIndex + 1] = (float)proximity_data;
-        addLog(LOG_LEVEL_INFO, "Read some proximity data");
+        //UserVar[event->BaseVarIndex + 1] = (float)proximity_data;
+        //addLog(LOG_LEVEL_INFO, "Read some proximity data");
         //log += F(" (");
         //log += (float)proximity_data;
         //log += F(")");
