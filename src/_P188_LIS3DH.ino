@@ -96,7 +96,7 @@ boolean Plugin_188(byte function, struct EventStruct *event, String& string)
 
         Plugin_188_clickthreshold = CONFIG_LONG(1);
         if (Plugin_188_clickthreshold < 1 || Plugin_188_clickthreshold > 100) Plugin_188_clickthreshold = 40;
-        addFormNumericBox(string, F("Click threshold"), F("plugin_188_clickthreshold"), Plugin_188_clickthreshold, 40, 80);
+        addFormNumericBox(string, F("Click threshold"), F("plugin_188_clickthreshold"), Plugin_188_clickthreshold, 40, 120);
 
         Plugin_188_timelimit = CONFIG_LONG(2);
         if (Plugin_188_timelimit < 1 || Plugin_188_timelimit > 100) Plugin_188_timelimit = 10;
