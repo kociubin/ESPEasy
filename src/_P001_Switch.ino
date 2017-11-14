@@ -125,7 +125,15 @@ boolean Plugin_001(byte function, struct EventStruct *event, String& string)
           byte currentOutputState = outputstate[event->TaskIndex];
 
           if (Settings.TaskDevicePluginConfig[event->TaskIndex][2] == 0) //normal switch
-            outputstate[event->TaskIndex] = state;
+          {
+            //debounce a little
+            delay(10);
+            byte state2 =  digitalRead(Settings.TaskDevicePin1[event->TaskIndex]);
+            if (state2 != state)
+              break;
+            else
+              outputstate[event->TaskIndex] = state;
+          }
           else
           {
             if (Settings.TaskDevicePluginConfig[event->TaskIndex][2] == 1)  // active low push button
@@ -314,6 +322,48 @@ boolean Plugin_001(byte function, struct EventStruct *event, String& string)
           outputstate[event->Par1] = event->Par2;
         }
 
+        //Takes two parameters:  par1= GPIO#,  par2= GPIO#,  par3= OffState (0 or 1)
+        //checks the state of the GPIOs.
+        //    If they're both off, then turn them both on
+        //    If at least one is on, then turn them both off
+        if (command == F("specialdualgpiotoggle"))
+        {
+            addLog(LOG_LEVEL_INFO, "specialdualgpiotoggle comand triggered");
+
+            byte offstate = event->Par3;
+            byte onstate;
+            if (offstate == 0)
+              onstate = 1;
+            else
+              onstate = 0;
+
+            pinMode(event->Par1, OUTPUT);
+            pinMode(event->Par2, OUTPUT);
+            byte gpio1_state = digitalRead(event->Par1);
+            byte gpio2_state = digitalRead(event->Par2);
+
+            byte output_state;
+
+            if (gpio1_state == offstate && gpio2_state == offstate)
+            {
+              output_state = onstate;
+            } else {
+              output_state = offstate;
+            }
+
+            digitalWrite(event->Par1, output_state);
+            digitalWrite(event->Par2, output_state);
+            setPinState(PLUGIN_ID_001, event->Par1, PIN_MODE_OUTPUT, output_state);
+            setPinState(PLUGIN_ID_001, event->Par2, PIN_MODE_OUTPUT, output_state);
+
+            addLog(LOG_LEVEL_INFO, String(F("SW   :Special Toggle.   GPIO ")) + String(event->Par1) + String(F(" Set to ")) + String(output_state) );
+            addLog(LOG_LEVEL_INFO, String(F("SW   :Special Toggle.   GPIO ")) + String(event->Par2) + String(F(" Set to ")) + String(output_state) );
+
+            success = true;
+
+        }
+
+
         #ifdef PLUGIN_BUILD_TESTING
         //play a tune via a RTTTL string, look at https://www.letscontrolit.com/forum/viewtopic.php?f=4&t=343&hilit=speaker&start=10 for more info.
         if (command == F("rtttl"))
@@ -370,7 +420,7 @@ void analogWriteESP32(int pin, int value)
   for(byte x = 0; x < 16; x++)
     if (ledChannelPin[x] == pin)
       ledChannel = x;
-                 
+
   if(ledChannel == -1) // no channel set for this pin
     {
       for(byte x = 0; x < 16; x++) // find free channel
@@ -387,4 +437,3 @@ void analogWriteESP32(int pin, int value)
   ledcWrite(ledChannel, value);
 }
 #endif
-
