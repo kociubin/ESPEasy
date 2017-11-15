@@ -105,10 +105,10 @@ boolean Plugin_064(byte function, struct EventStruct *event, String& string)
           if (! PLUGIN_064_pds->enableProximitySensor(false))
              log += F(" - Error during proximity sensor init!");
 
-          // Adjust the Proximity sensor gain
-          // if ( !PLUGIN_064_pds->setProximityGain(PGAIN_4X) ) {
-          //    log += F(" - Something went wrong trying to set PGAIN");
-          //  }
+          //Adjust the Proximity sensor gain.  Default is PGAIN_4X 
+          if ( !PLUGIN_064_pds->setProximityGain(PGAIN_2X) ) {
+             log += F(" - Something went wrong trying to set PGAIN");
+           }
 
         }
         else
