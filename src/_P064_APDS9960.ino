@@ -23,8 +23,16 @@
 
 #define PLUGIN_064
 #define PLUGIN_ID_064         64
-#define PLUGIN_NAME_064       "Gesture - APDS9960 [DEV]"
-#define PLUGIN_VALUENAME1_064 "Proximity"
+#define PLUGIN_NAME_064       "Gesture - APDS9960 [DEVELOPMENT]"
+#define PLUGIN_VALUENAME1_064 "Gesture"
+#define PLUGIN_VALUENAME2_064 "Proximity"
+#define PLUGIN_VALUENAME3_064 "Light"
+/*
+#define PLUGIN_VALUENAME4_064 "R"
+#define PLUGIN_VALUENAME5_064 "G"
+#define PLUGIN_VALUENAME6_064 "B"
+*/
+
 
 #include <SparkFun_APDS9960.h>   //Lib is modified to work with ESP
 
@@ -105,7 +113,7 @@ boolean Plugin_064(byte function, struct EventStruct *event, String& string)
           if (! PLUGIN_064_pds->enableProximitySensor(false))
              log += F(" - Error during proximity sensor init!");
 
-          //Adjust the Proximity sensor gain.  Default is PGAIN_4X 
+          //Adjust the Proximity sensor gain.  Default is PGAIN_4X
           if ( !PLUGIN_064_pds->setProximityGain(PGAIN_2X) ) {
              log += F(" - Something went wrong trying to set PGAIN");
            }
