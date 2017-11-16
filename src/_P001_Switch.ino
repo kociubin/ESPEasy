@@ -322,7 +322,6 @@ boolean Plugin_001(byte function, struct EventStruct *event, String& string)
           outputstate[event->Par1] = event->Par2;
         }
 
-        //Takes two parameters:  par1= GPIO#,  par2= GPIO#,  par3= OffState (0 or 1)
         //checks the state of the GPIOs.
         //    If they're both off, then turn them both on
         //    If at least one is on, then turn them both off
@@ -364,6 +363,7 @@ boolean Plugin_001(byte function, struct EventStruct *event, String& string)
         }
 
 
+        // FIXME: Absolutely no error checking in play_rtttl, until then keep it only in testing
         #ifdef PLUGIN_BUILD_TESTING
         //play a tune via a RTTTL string, look at https://www.letscontrolit.com/forum/viewtopic.php?f=4&t=343&hilit=speaker&start=10 for more info.
         if (command == F("rtttl"))
@@ -372,10 +372,11 @@ boolean Plugin_001(byte function, struct EventStruct *event, String& string)
           if (event->Par1 >= 0 && event->Par1 <= 16)
           {
             pinMode(event->Par1, OUTPUT);
-            char sng[1024] ="";
-            string.replace("-","#");
-            string.toCharArray(sng, 1024);
-            play_rtttl(event->Par1, sng);
+            // char sng[1024] ="";
+            String tmpString=string;
+            tmpString.replace("-","#");
+            // tmpString.toCharArray(sng, 1024);
+            play_rtttl(event->Par1, tmpString.c_str());
             setPinState(PLUGIN_ID_001, event->Par1, PIN_MODE_OUTPUT, event->Par2);
             log = String(F("SW   : ")) + string;
             addLog(LOG_LEVEL_INFO, log);
