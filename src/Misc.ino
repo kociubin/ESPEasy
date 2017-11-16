@@ -1253,7 +1253,7 @@ void delayedReboot(int rebootDelay)
    #endif
    #if defined(ESP32)
      ESP.restart();
-   #endif
+   #endif  
 }
 
 
@@ -2443,9 +2443,8 @@ String rulesProcessingFile(String fileName, String& event)
             struct EventStruct TempEvent;
             parseCommandString(&TempEvent, action);
             yield();
-            String action_bck=action; // dirty fix
             if (!PluginCall(PLUGIN_WRITE, &TempEvent, action))
-              ExecuteCommand(VALUE_SOURCE_SYSTEM, action_bck.c_str());
+              ExecuteCommand(VALUE_SOURCE_SYSTEM, action.c_str());
             yield();
           }
         }
@@ -2944,7 +2943,7 @@ void ArduinoOTAInit()
       #endif
       #if defined(ESP32)
         ESP.restart();
-      #endif
+      #endif      
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
 
@@ -2965,7 +2964,7 @@ void ArduinoOTAInit()
       #endif
       #if defined(ESP32)
         ESP.restart();
-      #endif
+      #endif      
   });
   ArduinoOTA.begin();
 
