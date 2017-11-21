@@ -325,38 +325,44 @@ boolean Plugin_001(byte function, struct EventStruct *event, String& string)
         //checks the state of the GPIOs.
         //    If they're both off, then turn them both on
         //    If at least one is on, then turn them both off
+        //      Par1 and Par2:  GPIO's to check and setup
+        //      Par3:  value to set the GPIO to turn device to the off state
+
         if (command == F("specialdualgpiotoggle"))
         {
             addLog(LOG_LEVEL_INFO, "specialdualgpiotoggle comand triggered");
 
-            byte offstate = event->Par3;
-            byte onstate;
-            if (offstate == 0)
-              onstate = 1;
+            byte gpio_offstate = event->Par3;
+            byte gpio_onstate;
+            if (gpio_offstate == 0)
+              gpio_onstate = 1;
             else
-              onstate = 0;
+              gpio_onstate = 0;
 
             pinMode(event->Par1, OUTPUT);
             pinMode(event->Par2, OUTPUT);
             byte gpio1_state = digitalRead(event->Par1);
             byte gpio2_state = digitalRead(event->Par2);
 
-            byte output_state;
+            byte output_gpio_value;
 
-            if (gpio1_state == offstate && gpio2_state == offstate)
+            if (gpio1_state == gpio_offstate && gpio2_state == gpio_offstate)
             {
-              output_state = onstate;
+              output_gpio_value = gpio_onstate;
+              addLog(LOG_LEVEL_INFO, "SW :Special Toggle.  Going to turn both lights ON");
+
             } else {
-              output_state = offstate;
+              output_gpio_value = gpio_offstate;
+              addLog(LOG_LEVEL_INFO, "SW :Special Toggle.  Going to turn both lights OFF");
             }
 
-            digitalWrite(event->Par1, output_state);
-            digitalWrite(event->Par2, output_state);
-            setPinState(PLUGIN_ID_001, event->Par1, PIN_MODE_OUTPUT, output_state);
-            setPinState(PLUGIN_ID_001, event->Par2, PIN_MODE_OUTPUT, output_state);
+            digitalWrite(event->Par1, output_gpio_value);
+            digitalWrite(event->Par2, output_gpio_value);
+            setPinState(PLUGIN_ID_001, event->Par1, PIN_MODE_OUTPUT, output_gpio_value);
+            setPinState(PLUGIN_ID_001, event->Par2, PIN_MODE_OUTPUT, output_gpio_value);
 
-            addLog(LOG_LEVEL_INFO, String(F("SW   :Special Toggle.   GPIO ")) + String(event->Par1) + String(F(" Set to ")) + String(output_state) );
-            addLog(LOG_LEVEL_INFO, String(F("SW   :Special Toggle.   GPIO ")) + String(event->Par2) + String(F(" Set to ")) + String(output_state) );
+            addLog(LOG_LEVEL_INFO, String(F("SW :Special Toggle. GPIO ")) + String(event->Par1) + String(F(" Set to "))
+              + String(output_gpio_value) + String(F("    GPIO ")) + String(event->Par2) + String(F(" Set to ")) + String(output_gpio_value) );
 
             success = true;
 
