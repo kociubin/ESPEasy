@@ -354,7 +354,7 @@
   #include <WiFi.h>
   #include <ESP32WebServer.h>
   #include "SPIFFS.h"
-  ESP32WebServer WebServer(80); 
+  ESP32WebServer WebServer(80);
   #ifdef FEATURE_MDNS
     #include <ESPmDNS.h>
   #endif
@@ -648,7 +648,7 @@ String printWebString = "";
 boolean printToWebJSON = false;
 
 float UserVar[VARS_PER_TASK * TASKS_MAX];
-unsigned long RulesTimer[RULES_TIMER_MAX];
+double RulesTimer[RULES_TIMER_MAX];
 
 unsigned long timerSensor[TASKS_MAX];
 unsigned long timer100ms;
@@ -767,7 +767,7 @@ void setup()
 
   fileSystemCheck();
   LoadSettings();
-        
+
   if (strcasecmp(SecuritySettings.WifiSSID, "ssid") == 0)
     wifiSetup = true;
 
@@ -949,6 +949,7 @@ void run50TimesPerSecond()
 \*********************************************************************************************/
 void run10TimesPerSecond()
 {
+
   start = micros();
   timer100ms = millis() + 100;
   PluginCall(PLUGIN_TEN_PER_SECOND, 0, dummyString);
@@ -958,6 +959,9 @@ void run10TimesPerSecond()
     eventBuffer = "";
   }
   elapsed = micros() - start;
+
+  if (Settings.UseRules)
+    rulesTimers();
 }
 
 

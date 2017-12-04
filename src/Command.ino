@@ -312,6 +312,25 @@ void ExecuteCommand(byte source, const char *Line)
     }
   }
 
+  //Special command to be able to set timers in milliseconds
+  if (strcasecmp_P(Command, PSTR("TimerSetMillis")) == 0)
+  {
+    if (Par1>=1 && Par1<=RULES_TIMER_MAX)
+    {
+      success = true;
+      if (Par2)
+        //start new timer
+        RulesTimer[Par1 - 1] = millis() + (Par2);  //in milliseconds
+      else
+        //disable existing timer
+        RulesTimer[Par1 - 1] = 0L;
+    }
+    else
+    {
+      addLog(LOG_LEVEL_ERROR, F("TIMER: invalid timer number"));
+    }
+  }
+
   if (strcasecmp_P(Command, PSTR("Delay")) == 0)
   {
     success = true;
