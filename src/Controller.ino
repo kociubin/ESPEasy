@@ -100,8 +100,13 @@ void MQTTConnect()
   ControllerSettingsStruct ControllerSettings;
   LoadControllerSettings(0, (byte*)&ControllerSettings, sizeof(ControllerSettings)); // todo index is now fixed to 0
 
+  //TODO:  Hack because of a bug in PubSubClient
+  char c[300];
+  strcpy(c,  ControllerSettings.getHost().c_str());
+
   if (ControllerSettings.UseDNS) {
-    MQTTclient.setServer(ControllerSettings.getHost().c_str(), ControllerSettings.Port);
+    MQTTclient.setServer(c, ControllerSettings.Port);
+    //MQTTclient.setServer(ControllerSettings.getHost().c_str(), ControllerSettings.Port);
   } else {
     MQTTclient.setServer(ControllerSettings.getIP(), ControllerSettings.Port);
   }
