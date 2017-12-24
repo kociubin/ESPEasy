@@ -100,11 +100,8 @@ void MQTTConnect()
   ControllerSettingsStruct ControllerSettings;
   LoadControllerSettings(0, (byte*)&ControllerSettings, sizeof(ControllerSettings)); // todo index is now fixed to 0
 
-  if (ControllerSettings.UseDNS) {
-    MQTTclient.setServer(ControllerSettings.getHost().c_str(), ControllerSettings.Port);
-  } else {
-    MQTTclient.setServer(ControllerSettings.getIP(), ControllerSettings.Port);
-  }
+  IPAddress MQTTBrokerIP(ControllerSettings.IP);
+  MQTTclient.setServer(MQTTBrokerIP, ControllerSettings.Port);
   MQTTclient.setCallback(callback);
 
   // MQTT needs a unique clientname to subscribe to broker

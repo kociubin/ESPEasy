@@ -50,12 +50,13 @@ boolean CPlugin_001(byte function, struct EventStruct *event, String& string)
           }
 
           // boolean success = false;
-          addLog(LOG_LEVEL_DEBUG, String(F("HTTP : connecting to "))+ControllerSettings.getHostPortString());
+          IPAddress host(ControllerSettings.IP[0], ControllerSettings.IP[1], ControllerSettings.IP[2], ControllerSettings.IP[3]);
+          addLog(LOG_LEVEL_DEBUG, String(F("HTTP : connecting to "))+host.toString()+":"+ControllerSettings.Port);
 
 
           // Use WiFiClient class to create TCP connections
           WiFiClient client;
-          if (!ControllerSettings.connectToHost(client))
+          if (!client.connect(host, ControllerSettings.Port))
           {
             connectionFailures++;
 
@@ -171,7 +172,7 @@ boolean CPlugin_001(byte function, struct EventStruct *event, String& string)
           request += url;
           request += F(" HTTP/1.1\r\n");
           request += F("Host: ");
-          request += ControllerSettings.getHost();
+          request += host.toString();
           request += F("\r\n");
           request += authHeader;
           request += F("Connection: close\r\n\r\n");

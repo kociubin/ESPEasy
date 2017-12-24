@@ -72,7 +72,12 @@ void C010_Send(struct EventStruct *event, byte varIndex, float value, unsigned l
 
   char log[80];
   // boolean success = false;
-  addLog(LOG_LEVEL_DEBUG, String(F("UDP  : sending to ")) + ControllerSettings.getHostPortString());
+  char host[20];
+  sprintf_P(host, PSTR("%u.%u.%u.%u"), ControllerSettings.IP[0], ControllerSettings.IP[1], ControllerSettings.IP[2], ControllerSettings.IP[3]);
+
+  sprintf_P(log, PSTR("%s%s using port %u"), "UDP  : sending to ", host, ControllerSettings.Port);
+  addLog(LOG_LEVEL_DEBUG, log);
+
   statusLED(true);
 
   if (ExtraTaskSettings.TaskDeviceValueNames[0][0] == 0)
@@ -89,7 +94,8 @@ void C010_Send(struct EventStruct *event, byte varIndex, float value, unsigned l
   else
     msg.replace(F("%value%"), toString(value, ExtraTaskSettings.TaskDeviceValueDecimals[varIndex]));
 
-  ControllerSettings.beginPacket(portUDP);
+  IPAddress IP(ControllerSettings.IP[0], ControllerSettings.IP[1], ControllerSettings.IP[2], ControllerSettings.IP[3]);
+  portUDP.beginPacket(IP, ControllerSettings.Port);
   portUDP.write(msg.c_str());
   portUDP.endPacket();
 
