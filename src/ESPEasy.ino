@@ -1060,8 +1060,9 @@ void runOncePerSecond()
 
   checkSystemTimers();
 
-  if (Settings.UseRules)
-    rulesTimers();
+  //Already checking 10 times per second
+  //if (Settings.UseRules)
+  //  rulesTimers();
 
   timer = micros() - timer;
 
