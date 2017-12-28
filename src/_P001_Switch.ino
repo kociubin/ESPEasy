@@ -125,9 +125,10 @@ boolean Plugin_001(byte function, struct EventStruct *event, String& string)
           byte currentOutputState = outputstate[event->TaskIndex];
 
           if (Settings.TaskDevicePluginConfig[event->TaskIndex][2] == 0) //normal switch
+            //outputstate[event->TaskIndex] = state;
           {
-            //debounce a little
-            delay(10);
+            //debounce a little  (MMK:  replace the body of if with this)
+            delay(15);
             byte state2 =  digitalRead(Settings.TaskDevicePin1[event->TaskIndex]);
             if (state2 != state)
               break;
