@@ -6,8 +6,10 @@ import config
 import time
 import paho.mqtt.client as mqtt
 import json
+import bottle
+import threading
+from queue import Queue, Empty
 from espcore import *
-
 
 
 ### mqtt stuff
@@ -53,6 +55,7 @@ def mqtt_expect_json(topic, matches, timeout=60):
 
     raise(Exception("Timeout while expecting mqtt json message"))
 
+
 ### create node objects and espeasy objects
 node=[]
 espeasy=[]
@@ -60,3 +63,40 @@ espeasy=[]
 for n in config.nodes:
     node.append(Node(n, "node"+str(len(node))))
     espeasy.append(EspEasy(node[-1]))
+
+
+### http server stuff.
+
+# the http server just accepts everything and stores it in the http_requests queue
+import bottle
+
+http_requests = Queue()
+@bottle.route('/<filename:path>')
+def urlhandler(filename):
+    http_requests.put(bottle.request.copy())
+
+http_thread=threading.Thread(target=bottle.run,  kwargs=dict(host='0.0.0.0', port=config.http_port, reloader=False))
+http_thread.daemon=True
+http_thread.start()
+
+def http_expect_request(path, matches, timeout=60):
+    """wait until a specific path and paraters are request on the http server. ignores all other requests"""
+
+    start_time=time.time()
+
+    logging.getLogger("HTTP").info("Waiting for http request on path {path}, with values {matches}".format(path=path, matches=matches))
+
+    # check http results
+    while time.time()-start_time<timeout:
+        while not http_requests.empty():
+            request=http_requests.get()
+            if request.path == path:
+                ok=True
+                for match in matches.items():
+                    if not match[0] in request.params or request.params[match[0]]!=match[1]:
+                        ok=False
+                if ok:
+                    return(request)
+        time.sleep(1)
+
+    raise(Exception("Timeout while expecting http message"))

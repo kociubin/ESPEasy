@@ -7,10 +7,14 @@
 #if defined(ESP8266)
 void tcpCleanup()
 {
-  while(tcp_tw_pcbs!=NULL)
-  {
-    tcp_abort(tcp_tw_pcbs);
-  }
+  #if LWIP_VERSION_MAJOR == 2
+    // is it still needed ? 
+  #else
+    while(tcp_tw_pcbs!=NULL)
+    {
+      tcp_abort(tcp_tw_pcbs);
+    }
+  #endif  
 }
 #endif
 
@@ -655,11 +659,21 @@ void fileSystemCheck()
   \*********************************************************************************************/
 byte getDeviceIndex(byte Number)
 {
-  byte DeviceIndex = 0;
-  for (byte x = 0; x <= deviceCount ; x++)
-    if (Device[x].Number == Number)
-      DeviceIndex = x;
-  return DeviceIndex;
+  for (byte x = 0; x <= deviceCount ; x++) {
+    if (Device[x].Number == Number) {
+      return x;
+    }
+  }
+  return 0;
+}
+
+/********************************************************************************************\
+  Find name of plugin given the plugin device index..
+  \*********************************************************************************************/
+String getPluginNameFromDeviceIndex(byte deviceIndex) {
+  String deviceName = "";
+  Plugin_ptr[deviceIndex](PLUGIN_GET_DEVICENAME, 0, deviceName);
+  return deviceName;
 }
 
 
@@ -668,11 +682,12 @@ byte getDeviceIndex(byte Number)
   \*********************************************************************************************/
 byte getProtocolIndex(byte Number)
 {
-  byte ProtocolIndex = 0;
-  for (byte x = 0; x <= protocolCount ; x++)
-    if (Protocol[x].Number == Number)
-      ProtocolIndex = x;
-  return ProtocolIndex;
+  for (byte x = 0; x <= protocolCount ; x++) {
+    if (Protocol[x].Number == Number) {
+      return x;
+    }
+  }
+  return 0;
 }
 
 /********************************************************************************************\
@@ -680,11 +695,11 @@ byte getProtocolIndex(byte Number)
   \*********************************************************************************************/
 byte getNotificationProtocolIndex(byte Number)
 {
-
-  for (byte x = 0; x <= notificationCount ; x++)
-    if (Notification[x].Number == Number)
+  for (byte x = 0; x <= notificationCount ; x++) {
+    if (Notification[x].Number == Number) {
       return(x);
-
+    }
+  }
   return(NPLUGIN_NOT_FOUND);
 }
 
@@ -741,6 +756,7 @@ boolean GetArgv(const char *string, char *argv, unsigned int argc)
 /********************************************************************************************\
   Convert a char string to integer
   \*********************************************************************************************/
+//FIXME: change original code so it uses String and String.toInt()
 unsigned long str2int(char *string)
 {
   unsigned long temp = atof(string);
@@ -751,6 +767,7 @@ unsigned long str2int(char *string)
 /********************************************************************************************\
   Convert a char string to IP byte array
   \*********************************************************************************************/
+//FIXME: change original code so it uses IPAddress and IPAddress.fromString()
 boolean str2ip(char *string, byte* IP)
 {
   byte c;
@@ -1092,6 +1109,11 @@ void ResetFactory(void)
   strcpy_P(SecuritySettings.WifiKey, PSTR(DEFAULT_KEY));
   strcpy_P(SecuritySettings.WifiAPKey, PSTR(DEFAULT_AP_KEY));
   SecuritySettings.Password[0] = 0;
+  // TD-er Reset access control
+  str2ip((char*)DEFAULT_IPRANGE_LOW, SecuritySettings.AllowedIPrangeLow);
+  str2ip((char*)DEFAULT_IPRANGE_HIGH, SecuritySettings.AllowedIPrangeHigh);
+  SecuritySettings.IPblockLevel = DEFAULT_IP_BLOCK_LEVEL;
+
   Settings.Delay           = DEFAULT_DELAY;
   Settings.Pin_i2c_sda     = 4;
   Settings.Pin_i2c_scl     = 5;
@@ -1668,6 +1690,23 @@ boolean matchClockEvent(unsigned long clockEvent, unsigned long clockSet)
   Parse string template
   \*********************************************************************************************/
 
+// Call this by first declaring a char array of size 20, like:
+//  char strIP[20];
+//  formatIP(ip, strIP);
+void formatIP(const IPAddress& ip, char (&strIP)[20]) {
+  sprintf_P(strIP, PSTR("%u.%u.%u.%u"), ip[0], ip[1], ip[2], ip[3]);
+}
+
+String formatIP(const IPAddress& ip) {
+  char strIP[20];
+  formatIP(ip, strIP);
+  return String(strIP);
+}
+
+void formatMAC(const uint8_t* mac, char (&strMAC)[20]) {
+  sprintf_P(strMAC, PSTR("%02X:%02X:%02X:%02X:%02X:%02X"), mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
 String parseTemplate(String &tmpString, byte lineSize)
 {
   String newString = "";
@@ -1774,10 +1813,8 @@ String parseTemplate(String &tmpString, byte lineSize)
   newString.replace(F("%vcc%"), String(vcc));
 #endif
 
-  IPAddress ip = WiFi.localIP();
-  char strIP[20];
-  sprintf_P(strIP, PSTR("%u.%u.%u.%u"), ip[0], ip[1], ip[2], ip[3]);
-  newString.replace(F("%ip%"), strIP);
+  const IPAddress ip = WiFi.localIP();
+  newString.replace(F("%ip%"), formatIP(ip));
   newString.replace(F("%ip1%"), String(ip[0]));
   newString.replace(F("%ip2%"), String(ip[1]));
   newString.replace(F("%ip3%"), String(ip[2]));
@@ -2262,10 +2299,8 @@ unsigned long getNtpTime()
     else
       WiFi.hostByName(ntpServerName, timeServerIP);
 
-    char host[20];
-    sprintf_P(host, PSTR("%u.%u.%u.%u"), timeServerIP[0], timeServerIP[1], timeServerIP[2], timeServerIP[3]);
     log = F("NTP  : NTP send to ");
-    log += host;
+    log += formatIP(timeServerIP);
     addLog(LOG_LEVEL_DEBUG_MORE, log);
 
     while (udp.parsePacket() > 0) ; // discard any previously received packets

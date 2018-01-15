@@ -24,7 +24,8 @@ void sendData(struct EventStruct *event)
       uint16_t delayms = Settings.MessageDelay - dif;
       //this is logged nowhere else, so might as well disable it here also:
       // addLog(LOG_LEVEL_DEBUG_MORE, String(F("CTRL : Message delay (ms): "))+delayms);
-      delayBackground(delayms);
+
+     delayBackground(delayms);
 
       // unsigned long timer = millis() + delayms;
       // while (!timeOutReached(timer))
@@ -38,11 +39,19 @@ void sendData(struct EventStruct *event)
   {
     event->ControllerIndex = x;
     event->idx = Settings.TaskDeviceID[x][event->TaskIndex];
-
-    if (Settings.TaskDeviceSendData[event->ControllerIndex][event->TaskIndex] && Settings.ControllerEnabled[event->ControllerIndex] && Settings.Protocol[event->ControllerIndex])
+    if (Settings.TaskDeviceSendData[event->ControllerIndex][event->TaskIndex] &&
+        Settings.ControllerEnabled[event->ControllerIndex] && Settings.Protocol[event->ControllerIndex])
     {
       event->ProtocolIndex = getProtocolIndex(Settings.Protocol[event->ControllerIndex]);
-      CPlugin_ptr[event->ProtocolIndex](CPLUGIN_PROTOCOL_SEND, event, dummyString);
+      if (validUserVar(event)) {
+        CPlugin_ptr[event->ProtocolIndex](CPLUGIN_PROTOCOL_SEND, event, dummyString);
+      } else {
+        String log = F("Invalid value detected for controller ");
+        String controllerName;
+        CPlugin_ptr[event->ProtocolIndex](CPLUGIN_GET_DEVICENAME, event, controllerName);
+        log += controllerName;
+        addLog(LOG_LEVEL_DEBUG, log);
+      }
     }
   }
 
@@ -50,6 +59,17 @@ void sendData(struct EventStruct *event)
   lastSend = millis();
 }
 
+boolean validUserVar(struct EventStruct *event) {
+  for (int i = 0; i < VARS_PER_TASK; ++i) {
+    const float f(UserVar[event->BaseVarIndex + i]);
+    if (f == NAN)      return false; //("NaN");
+    if (f == INFINITY) return false; //("INFINITY");
+    if (-f == INFINITY)return false; //("-INFINITY");
+    if (isnan(f))      return false; //("isnan");
+    if (isinf(f))      return false; //("isinf");
+  }
+  return true;
+}
 
 /*********************************************************************************************\
  * Handle incoming MQTT messages
@@ -64,6 +84,7 @@ void callback(char* c_topic, byte* b_payload, unsigned int length) {
   if (length>sizeof(c_payload)-1)
   {
     addLog(LOG_LEVEL_ERROR, F("MQTT : Ignored too big message"));
+    return;
   }
 
   //convert payload to string, and 0 terminate
@@ -109,10 +130,12 @@ void MQTTConnect()
   MQTTclient.setCallback(callback);
 
   // MQTT needs a unique clientname to subscribe to broker
-  String clientid = "ESPClient";
-  clientid += Settings.Unit;
+  String clientid = Settings.Name; // clientid = %sysname%
+  if (Settings.Unit != 0) // set unit number to zero if don't want to add to clientid
+  {
+    clientid += Settings.Unit;
+  }
   String subscribeTo = "";
-
   String LWTTopic = ControllerSettings.Subscribe;
   LWTTopic.replace(F("/#"), F("/status"));
   LWTTopic.replace(F("%sysname%"), Settings.Name);
@@ -123,13 +146,15 @@ void MQTTConnect()
     boolean MQTTresult = false;
 
     if ((SecuritySettings.ControllerUser[0] != 0) && (SecuritySettings.ControllerPassword[0] != 0))
-      MQTTresult = MQTTclient.connect(clientid.c_str(), SecuritySettings.ControllerUser[0], SecuritySettings.ControllerPassword[0], LWTTopic.c_str(), 0, 0, "Connection Lost");
+      MQTTresult = MQTTclient.connect(clientid.c_str(), SecuritySettings.ControllerUser[0], SecuritySettings.ControllerPassword[0], LWTTopic.c_str(), 0, 1, "Connection Lost");
     else
-      MQTTresult = MQTTclient.connect(clientid.c_str(), LWTTopic.c_str(), 0, 0, "Connection Lost");
+      MQTTresult = MQTTclient.connect(clientid.c_str(), LWTTopic.c_str(), 0, 1, "Connection Lost");
 
     if (MQTTresult)
     {
-      log = F("MQTT : Connected to broker");
+      log = F("MQTT : ClientID ");
+      log += clientid;
+      log += " connected to broker";
       addLog(LOG_LEVEL_INFO, log);
       subscribeTo = ControllerSettings.Subscribe;
       subscribeTo.replace(F("%sysname%"), Settings.Name);
@@ -138,14 +163,16 @@ void MQTTConnect()
       log += subscribeTo;
       addLog(LOG_LEVEL_INFO, log);
 
-      MQTTclient.publish(LWTTopic.c_str(), "Connected");
+      MQTTclient.publish(LWTTopic.c_str(), "Connected", 1);
 
       statusLED(true);
       break; // end loop if succesfull
     }
     else
     {
-      log = F("MQTT : Failed to connect to broker");
+      log = F("MQTT : ClientID ");
+      log += clientid;
+      log +=" failed to connected to broker";
       addLog(LOG_LEVEL_ERROR, log);
     }
 
